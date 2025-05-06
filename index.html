@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Каталог товаров</title>
+    <style>
+        .card {
+            border: 1px solid #ccc;
+            padding: 16px;
+            margin: 16px;
+            width: 200px;
+            display: inline-block;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Каталог товаров</h1>
+
+    <!-- Поля для поиска -->
+    <input type="text" id="searchId" placeholder="Поиск по ID">
+    <input type="text" id="searchName" placeholder="Поиск по имени">
+    <input type="text" id="searchPrice" placeholder="Поиск по цене">
+    <input type="text" id="searchDescription" placeholder="Поиск по описанию">
+    <button id="searchButton">Найти</button>
+    
+
+    <!-- Кнопки для фильтрации -->
+    <h3>Фильтрация</h3>
+    <button class="filterButton" data-filter="id">ID</button>
+    <button class="filterButton" data-filter="name">Имя</button>
+    <button class="filterButton" data-filter="price">Цена</button>
+    <button class="filterButton" data-filter="description">Описание</button>
+    <button id="resetFilter">Сбросить</button>
+
+    <div id="catalog"></div>
+
+    <h2>Чат с администратором</h2>
+    <div id="chat" style="border: 1px solid #ccc; padding: 10px; width: 300px; height: 200px; overflow-y: auto;"></div>
+    <input type="text" id="messageInput" placeholder="Введите сообщение">
+    <button onclick="sendMessage()">Отправить</button>
+
+    <script>
+        let products = []; 
+        let activeFilters = new Set(); 
+        let autoUpdate = true; 
+
+        async function loadProducts() {
+            try {
+                if (!autoUpdate) return; 
+
+                const response = await fetch('http://localhost:3000/products');
+                products = await response.json();
+                renderProducts(products);
+            } catch (error) {
+                console.error('Ошибка загрузки товаров:', error);
+            }
+        }
+
+        function renderProducts(productsArray) {
+            const catalog = document.getElementById('catalog');
+            catalog.innerHTML = ""; 
+
+            productsArray.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let content = "";
+                if (activeFilters.size === 0 || activeFilters.has("id")) {
+                    content += `<p><strong>ID:</strong> ${item.id}</p>`;
+                }
+                if (activeFilters.size === 0 || activeFilters.has("name")) {
+                    content += `<h2>${item.name}</h2>`;
+                }
+                if (activeFilters.size === 0 || activeFilters.has("price")) {
+                    content += `<p><strong>Цена:</strong> ${item.price} руб.</p>`;
+                }
+                if (activeFilters.size === 0 || activeFilters.has("description")) {
+                    content += `<p>${item.description}</p>`;
+                }
+
+                card.innerHTML = content;
+                catalog.appendChild(card);
+            });
+        }
+
+        
+        document.querySelectorAll(".filterButton").forEach(button => {
+            button.addEventListener("click", () => {
+                const filter = button.getAttribute("data-filter");
+                if (activeFilters.has(filter)) {
+                    activeFilters.delete(filter);
+                    button.classList.remove("active");
+                } else {
+                    activeFilters.add(filter);
+                    button.classList.add("active");
+                }
+                autoUpdate = false;
+                renderProducts(products);
+            });
+        });
+
+        document.getElementById("searchButton").addEventListener("click", () => {
+            autoUpdate = false; 
+
+            let searchId = document.getElementById("searchId").value.trim();
+            let searchName = document.getElementById("searchName").value.trim().toLowerCase();
+            let searchPrice = document.getElementById("searchPrice").value.trim();
+            let searchDescription = document.getElementById("searchDescription").value.trim().toLowerCase();
+
+            let filteredProducts = products.filter(item => {
+                return (
+                    (searchId === "" || item.id.toString() === searchId) &&
+                    (searchName === "" || item.name.toLowerCase().includes(searchName)) &&
+                    (searchPrice === "" || item.price.toString() === searchPrice) &&
+                    (searchDescription === "" || item.description.toLowerCase().includes(searchDescription))
+                );
+            });
+
+            renderProducts(filteredProducts);
+        });
+
+        document.getElementById("resetFilter").addEventListener("click", () => {
+            autoUpdate = true;
+            activeFilters.clear();
+            document.querySelectorAll(".filterButton").forEach(button => button.classList.remove("active"));
+            renderProducts(products);
+        });
+
+        loadProducts();
+        setInterval(loadProducts, 5000); 
+
+        const ws = new WebSocket("ws://localhost:4040");
+        ws.onopen = () => {
+            console.log("Подключено к WebSocket");
+            ws.send(JSON.stringify({ type: "auth", role: "buyer" }));
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const chat = document.getElementById("chat");
+            const message = document.createElement("p");
+            message.textContent = `${data.role}: ${data.message}`;
+            chat.appendChild(message);
+            chat.scrollTop = chat.scrollHeight;
+        };
+
+        const role = "xxx";
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const message = input.value.trim();
+            if (message) {
+                ws.send(JSON.stringify({ type: "message", role: role, message: message })); 
+                input.value = "";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "admin_server",
+  "version": "1.0.0",
+  "main": "serveradmin.js",
+  "scripts": {
+    "start": "node serveradmin.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  }
+}

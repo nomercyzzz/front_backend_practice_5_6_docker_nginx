@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель администратора</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .card {
+            border: 1px solid #ccc;
+            padding: 16px;
+            margin: 16px;
+            width: 200px;
+            display: inline-block;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Панель администратора</h1>
+
+    <h2>Управление товарами</h2>
+    <h3>Добавить товар</h3>
+    <form id="addProductForm">
+        <input type="number" id="id" placeholder="ID товара" required>
+        <input type="text" id="name" placeholder="Название" required>
+        <input type="number" id="price" placeholder="Цена" required>
+        <input type="text" id="description" placeholder="Описание" required>
+        <button type="submit">Добавить</button>
+    </form>
+
+    <h3>Редактировать товар</h3>
+    <form id="editProductForm">
+        <input type="number" id="editId" placeholder="ID товара" required>
+        <input type="text" id="editName" placeholder="Новое название">
+        <input type="number" id="editPrice" placeholder="Новая цена">
+        <input type="text" id="editDescription" placeholder="Новое описание">
+        <button type="submit">Обновить</button>
+    </form>
+
+    <h3>Удалить товар</h3>
+    <form id="deleteProductForm">
+        <input type="number" id="deleteId" placeholder="ID товара" required>
+        <button type="submit">Удалить</button>
+    </form>
+
+    <h2>Чат с пользователями</h2>
+    <div id="chat" style="border: 1px solid #ccc; padding: 10px; width: 300px; height: 200px; overflow-y: auto;"></div>
+    <input type="text" id="messageInput" placeholder="Введите сообщение">
+    <button onclick="sendMessage()">Отправить</button>
+
+    <script>
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const product = {
+                id: parseInt(document.getElementById('id').value),
+                name: document.getElementById('name').value,
+                price: parseFloat(document.getElementById('price').value),
+                description: document.getElementById('description').value
+            };
+
+            await fetch('http://localhost:8080/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product)
+            });
+
+            alert('Товар добавлен!');
+        });
+
+        const ws = new WebSocket("ws://localhost:4040");
+        ws.onopen = () => {
+            console.log("Подключено к WebSocket");
+            ws.send(JSON.stringify({ type: "auth", role: "admin" }));
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const chat = document.getElementById("chat");
+            const message = document.createElement("p");
+            message.textContent = `${data.role}: ${data.message}`;
+            chat.appendChild(message);
+            chat.scrollTop = chat.scrollHeight;
+        };
+
+        const role = "admin"; 
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const message = input.value.trim();
+            if (message) {
+                ws.send(JSON.stringify({ type: "message", role: role, message: message })); 
+                input.value = "";
+            }
+        }
+        
+    </script>
+</body>
+</html>
