@@ -55,16 +55,7 @@ services:
     working_dir: /usr/src/app
     command: node serveradmin.js
 
-  graphql:
-    build:
-      context: ./graphql_development
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./graphql_development:/usr/src/app
-    working_dir: /usr/src/app
-    command: node server.js
-
+    
   websocket:
     build:
       context: .
